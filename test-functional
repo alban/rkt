@@ -28,7 +28,8 @@ gcc -Wall -o mountshared mountshared.c
 sudo strace -f ./mountshared || true
 
 sudo bin/rkt list
-time sudo strace -f -s 512 bin/rkt --insecure-skip-verify run docker://busybox > /tmp/logs 2>&1 || true
-ls -lh /tmp/logs
-tail -100 /tmp/logs
+time sudo bin/rkt --insecure-skip-verify run docker://redis
+#time sudo strace -f -s 512 bin/rkt --insecure-skip-verify run docker://busybox > /tmp/logs 2>&1 || true
+#ls -lh /tmp/logs
+#tail -100 /tmp/logs
 
