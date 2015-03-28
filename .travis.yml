@@ -8,6 +8,7 @@ go:
 before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -y cpio realpath squashfs-tools
+ - sudo apt-get install -y strace gdb libcap-ng-utils
 
 install:
  - go get code.google.com/p/go.tools/cmd/cover
@@ -16,4 +17,5 @@ install:
 
 script:
  - ./test
+ - ./test-functional
 
