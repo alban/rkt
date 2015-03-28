@@ -9,6 +9,8 @@ build:
           sudo apt-get install -y cpio realpath squashfs-tools
           sudo apt-get install -y strace gdb libcap-ng-utils
 
+          go version
+
           #sudo go get code.google.com/p/go.tools/cmd/cover
           #sudo go get code.google.com/p/go.tools/cmd/vet
           #sudo go get github.com/appc/spec/...
