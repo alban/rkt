@@ -5,6 +5,7 @@ build:
         name: test script
         code: |-
           sudo apt-get update -qq
+          sudo apt-get install -y golang
           sudo apt-get install -y cpio realpath squashfs-tools
           sudo apt-get install -y strace gdb libcap-ng-utils
           ./test
