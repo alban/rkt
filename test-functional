@@ -1,0 +1,42 @@
+#!/bin/bash -e
+
+if [ "$CI" != true ] ; then
+	echo "Please only run this script in a throw-away VM."
+	exit 1
+fi
+
+if [ -d /var/lib/rkt ] ; then
+	echo "This is not a newly-installed VM."
+	exit 1
+fi
+
+go version
+pwd
+ls -l bin/
+echo
+cat /proc/self/cgroup || true
+echo
+cat /proc/self/mountinfo || true
+echo
+cat /proc/self/mounts || true
+echo
+echo CAPS
+sudo captest --text || true
+echo
+
+#gcc -Wall -o mountshared mountshared.c
+#sudo strace -f ./mountshared || true
+
+sudo bin/rkt list
+
+time sudo bin/rkt --debug --insecure-skip-verify run docker://redis
+#time sudo strace -f -s 128 bin/rkt --insecure-skip-verify run docker://redis > /tmp/logs 2>&1 || true
+#ls -lh /tmp/logs
+#tail -100 /tmp/logs
+
+
+
+#time sudo strace -f -s 512 bin/rkt --insecure-skip-verify run docker://busybox > /tmp/logs 2>&1 || true
+#ls -lh /tmp/logs
+#tail -100 /tmp/logs
+

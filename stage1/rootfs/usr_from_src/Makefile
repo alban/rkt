@@ -32,10 +32,15 @@ systemd.done: Makefile systemd.src
 # TODO(vc): it may make more sense to have the systemd source be a git submodule?
 systemd.src: Makefile patches/*
 	{ [ ! -e systemd ] || rm -Rf systemd; }
-	mkdir systemd
-	git clone --branch v215 --depth 1 git://anongit.freedesktop.org/systemd/systemd
+	#mkdir systemd
+	#git clone --branch v215 --depth 1 git://anongit.freedesktop.org/systemd/systemd
+
+	wget http://www.freedesktop.org/software/systemd/systemd-215.tar.xz
+	tar xf systemd-215.tar.xz
+	mv systemd-215 systemd
+
 	cd systemd && for p in ../patches/*; do patch -p1 <"$$p"; done
-	cd systemd && ./autogen.sh
+	#cd systemd && ./autogen.sh
 	touch systemd.src
 
 .PHONY: clean distclean
