@@ -4,6 +4,7 @@ test:
     - sudo apt-get install -y cpio realpath squashfs-tools
     - sudo apt-get install -y strace gdb libcap-ng-utils
     - sudo apt-get install -y coreutils # systemd needs a recent /bin/ln
+    - sudo apt-get install -y gperf # systemd deps
     - RKT_STAGE1_USR_FROM=src ./test
     - ./test-functional
 
