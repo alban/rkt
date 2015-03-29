@@ -1,4 +1,4 @@
-From 9d17ee7c8c5fbd72e35d2d2fa77274658e1c89f2 Mon Sep 17 00:00:00 2001
+From ac1cfb515456915c203010b5529f685f7bd22264 Mon Sep 17 00:00:00 2001
 From: Alban Crequy <alban@endocode.com>
 Date: Sun, 29 Mar 2015 14:51:23 +0200
 Subject: [PATCH] nspawn: fallback on bind mount when mknod fails
@@ -6,31 +6,37 @@ Subject: [PATCH] nspawn: fallback on bind mount when mknod fails
 Some systems abusively restrict mknod, even when the device node already
 exists in /dev. In that case, try to fallback on bind mount.
 ---
- src/nspawn/nspawn.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ src/nspawn/nspawn.c | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
 
 diff --git a/src/nspawn/nspawn.c b/src/nspawn/nspawn.c
-index c851fdd..e361788 100644
+index 0d538c2..c2a89a3 100644
 --- a/src/nspawn/nspawn.c
 +++ b/src/nspawn/nspawn.c
-@@ -1449,8 +1449,15 @@ static int copy_devnodes(const char *dest) {
-                                 return -r;
-                         }
+@@ -935,7 +935,22 @@ static int copy_devnodes(const char *dest) {
+                         log_error("%s is not a char or block device, cannot copy", from);
+                         return -EIO;
  
--                        if (mknod(to, st.st_mode, st.st_rdev) < 0)
--                                return log_error_errno(errno, "mknod(%s) failed: %m", to);
+-                } else if (mknod(to, st.st_mode, st.st_rdev) < 0) {
++                } else {
++                        r = mkdir_parents(to, 0775);
++                        if (r < 0) {
++                                log_error("Failed to create parent directory of %s: %m", to);
++                                return -r;
++                        }
++
 +                        if (mknod(to, st.st_mode, st.st_rdev) < 0) {
 +                                if (errno != EPERM)
-+                                        return log_error_errno(errno, "mknod(%s) failed: %m", to);
++                                        return log_error("mknod(%s) failed: %m", to);
 +
 +                                /* Some systems abusively restrict mknod but
 +                                 * allow bind mounts. */
 +                                if (mount(from, to, "bind", MS_BIND, NULL) < 0)
-+                                        return log_error_errno(errno, "both mknod and bind mount (%s) failed: %m", to);
++                                        return log_error("both mknod and bind mount (%s) failed: %m", to);
 +                        }
  
-                         if (arg_userns && arg_uid_shift != UID_INVALID)
-                                 if (lchown(to, arg_uid_shift, arg_uid_shift) < 0)
+                         log_error("mknod(%s) failed: %m", dest);
+                         return  -errno;
 -- 
 2.1.4
 
