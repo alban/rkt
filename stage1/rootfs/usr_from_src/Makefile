@@ -35,7 +35,7 @@ systemd.src: Makefile patches/*
 	mkdir systemd
 	#git clone --branch v215 --depth 1 git://anongit.freedesktop.org/systemd/systemd
 	git clone git://anongit.freedesktop.org/systemd/systemd
-	cd systemd && git checkout -b v215
+	cd systemd && git checkout --git-dir=./.git v215
 	cd systemd && for p in ../patches/*; do patch -p1 <"$$p"; done
 	cd systemd && ./autogen.sh
 	touch systemd.src
