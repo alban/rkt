@@ -29,10 +29,10 @@ echo
 
 sudo bin/rkt list
 
-#time sudo bin/rkt --insecure-skip-verify run docker://redis
-time sudo strace -f -s 128 bin/rkt --insecure-skip-verify run docker://redis > /tmp/logs 2>&1 || true
-ls -lh /tmp/logs
-tail -100 /tmp/logs
+time sudo bin/rkt --insecure-skip-verify run docker://redis
+#time sudo strace -f -s 128 bin/rkt --insecure-skip-verify run docker://redis > /tmp/logs 2>&1 || true
+#ls -lh /tmp/logs
+#tail -100 /tmp/logs
 
 
 
