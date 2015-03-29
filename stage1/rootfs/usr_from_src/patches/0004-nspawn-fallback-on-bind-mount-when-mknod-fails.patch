@@ -1,4 +1,4 @@
-From 1a85fdcd8529c3c21743e35faf9cb9b3d18d2168 Mon Sep 17 00:00:00 2001
+From 2907119ae847803b6fc85bd69bf3c9a582bfc4a3 Mon Sep 17 00:00:00 2001
 From: Alban Crequy <alban@endocode.com>
 Date: Sun, 29 Mar 2015 14:51:23 +0200
 Subject: [PATCH 4/4] nspawn: fallback on bind mount when mknod fails
@@ -6,14 +6,14 @@ Subject: [PATCH 4/4] nspawn: fallback on bind mount when mknod fails
 Some systems abusively restrict mknod, even when the device node already
 exists in /dev. In that case, try to fallback on bind mount.
 ---
- src/nspawn/nspawn.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+ src/nspawn/nspawn.c | 25 ++++++++++++++++++++++++-
+ 1 file changed, 24 insertions(+), 1 deletion(-)
 
 diff --git a/src/nspawn/nspawn.c b/src/nspawn/nspawn.c
-index 6650629..79dc20c 100644
+index 6650629..9bacc48 100644
 --- a/src/nspawn/nspawn.c
 +++ b/src/nspawn/nspawn.c
-@@ -955,7 +955,26 @@ static int copy_devnodes(const char *dest) {
+@@ -955,7 +955,30 @@ static int copy_devnodes(const char *dest) {
                          log_error("%s is not a char or block device, cannot copy", from);
                          return -EIO;
  
@@ -33,6 +33,10 @@ index 6650629..79dc20c 100644
 +
 +                                /* Some systems abusively restrict mknod but
 +                                 * allow bind mounts. */
++                                if (touch(to) < 0) {
++                                        log_error("touch (%s) failed: %m", to);
++                                        return -errno;
++                                }
 +                                if (mount(from, to, "bind", MS_BIND, NULL) < 0) {
 +                                        log_error("both mknod and bind mount (%s) failed: %m", to);
 +                                        return -errno;
