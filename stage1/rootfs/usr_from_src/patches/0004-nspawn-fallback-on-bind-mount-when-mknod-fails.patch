@@ -1,19 +1,19 @@
-From ac1cfb515456915c203010b5529f685f7bd22264 Mon Sep 17 00:00:00 2001
+From 1a85fdcd8529c3c21743e35faf9cb9b3d18d2168 Mon Sep 17 00:00:00 2001
 From: Alban Crequy <alban@endocode.com>
 Date: Sun, 29 Mar 2015 14:51:23 +0200
-Subject: [PATCH] nspawn: fallback on bind mount when mknod fails
+Subject: [PATCH 4/4] nspawn: fallback on bind mount when mknod fails
 
 Some systems abusively restrict mknod, even when the device node already
 exists in /dev. In that case, try to fallback on bind mount.
 ---
- src/nspawn/nspawn.c | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
+ src/nspawn/nspawn.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
 diff --git a/src/nspawn/nspawn.c b/src/nspawn/nspawn.c
-index 0d538c2..c2a89a3 100644
+index 6650629..79dc20c 100644
 --- a/src/nspawn/nspawn.c
 +++ b/src/nspawn/nspawn.c
-@@ -935,7 +935,22 @@ static int copy_devnodes(const char *dest) {
+@@ -955,7 +955,26 @@ static int copy_devnodes(const char *dest) {
                          log_error("%s is not a char or block device, cannot copy", from);
                          return -EIO;
  
@@ -26,13 +26,17 @@ index 0d538c2..c2a89a3 100644
 +                        }
 +
 +                        if (mknod(to, st.st_mode, st.st_rdev) < 0) {
-+                                if (errno != EPERM)
-+                                        return log_error("mknod(%s) failed: %m", to);
++                                if (errno != EPERM) {
++                                        log_error("mknod(%s) failed: %m", to);
++                                        return -errno;
++                                }
 +
 +                                /* Some systems abusively restrict mknod but
 +                                 * allow bind mounts. */
-+                                if (mount(from, to, "bind", MS_BIND, NULL) < 0)
-+                                        return log_error("both mknod and bind mount (%s) failed: %m", to);
++                                if (mount(from, to, "bind", MS_BIND, NULL) < 0) {
++                                        log_error("both mknod and bind mount (%s) failed: %m", to);
++                                        return -errno;
++                                }
 +                        }
  
                          log_error("mknod(%s) failed: %m", dest);

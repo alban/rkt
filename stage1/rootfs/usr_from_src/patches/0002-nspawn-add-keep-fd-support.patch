@@ -1,7 +1,7 @@
-From 3cd7128052c0c0e691b936523ac211ca8acd9b85 Mon Sep 17 00:00:00 2001
+From f49d05cefc368a47b9d540e2f42c4be6f31ce3c4 Mon Sep 17 00:00:00 2001
 From: Vito Caputo <vito.caputo@coreos.com>
 Date: Mon, 16 Mar 2015 15:10:15 -0700
-Subject: [PATCH 2/3] nspawn: add --keep-fd support
+Subject: [PATCH 2/4] nspawn: add --keep-fd support
 
 This enables inheriting a file from the executing process which persists
 for the duration of the nspawn parent process.  Useful in implementing a
