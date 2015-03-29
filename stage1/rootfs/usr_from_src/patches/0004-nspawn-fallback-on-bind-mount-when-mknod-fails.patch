@@ -1,16 +1,37 @@
-From 5042ccc6a70d5c3a7604cc65516dcb8a1fd237fa Mon Sep 17 00:00:00 2001
+From 293c726fb9036d977a77127bfaeadc610956e296 Mon Sep 17 00:00:00 2001
 From: Alban Crequy <alban@endocode.com>
 Date: Sun, 29 Mar 2015 14:51:23 +0200
 Subject: [PATCH 4/4] nspawn: fallback on bind mount when mknod fails
 
+From: Alban Crequy <alban@endocode.com>
+
 Some systems abusively restrict mknod, even when the device node already
-exists in /dev. In that case, try to fallback on bind mount.
+exists in /dev. This is unfortunate because it prevents systemd-nspawn
+from creating the basic devices in /dev in the container.
+
+This patch implements a workaround: when mknod fails, fallback on bind
+mounts.
+
+Additionally, /dev/console was created with a mknod with the same
+major/minor as /dev/null before bind mounting a pts on it. This patch
+removes the mknod and creates an empty regular file instead.
+
+In order to test this patch, I used the following configuration, which I
+think should replicate the system with the abusive restriction on mknod:
+
+  # grep devices /proc/self/cgroup
+  4:devices:/user.slice/restrict
+  # cat /sys/fs/cgroup/devices/user.slice/restrict/devices.list
+  c 1:9 r
+  c 5:2 rw
+  c 136:* rw
+  # systemd-nspawn --register=false -D .
 ---
- src/nspawn/nspawn.c | 26 +++++++++++++++++++++++---
- 1 file changed, 23 insertions(+), 3 deletions(-)
+ src/nspawn/nspawn.c | 42 ++++++++++++++++++++++++++----------------
+ 1 file changed, 26 insertions(+), 16 deletions(-)
 
 diff --git a/src/nspawn/nspawn.c b/src/nspawn/nspawn.c
-index 6650629..c9fd274 100644
+index 6650629..cb3c02e 100644
 --- a/src/nspawn/nspawn.c
 +++ b/src/nspawn/nspawn.c
 @@ -955,10 +955,30 @@ static int copy_devnodes(const char *dest) {
@@ -24,15 +45,15 @@ index 6650629..c9fd274 100644
 +                                log_error("Failed to create parent directory of %s: %m", to);
 +                                return -r;
 +                        }
-+
+ 
+-                        log_error("mknod(%s) failed: %m", dest);
+-                        return  -errno;
 +                        if (mknod(to, st.st_mode, st.st_rdev) < 0) {
 +                                if (errno != EPERM) {
 +                                        log_error("mknod(%s) failed: %m", to);
 +                                        return -errno;
 +                                }
- 
--                        log_error("mknod(%s) failed: %m", dest);
--                        return  -errno;
++
 +                                /* Some systems abusively restrict mknod but
 +                                 * allow bind mounts. */
 +                                if (touch(to) < 0) {
@@ -45,6 +66,45 @@ index 6650629..c9fd274 100644
 +                                }
 +                        }
                  }
+         }
+ 
+@@ -983,7 +1003,6 @@ static int setup_ptmx(const char *dest) {
+ static int setup_dev_console(const char *dest, const char *console) {
+         _cleanup_umask_ mode_t u;
+         const char *to;
+-        struct stat st;
+         int r;
+ 
+         assert(dest);
+@@ -991,11 +1010,6 @@ static int setup_dev_console(const char *dest, const char *console) {
+ 
+         u = umask(0000);
+ 
+-        if (stat("/dev/null", &st) < 0) {
+-                log_error("Failed to stat /dev/null: %m");
+-                return -errno;
+-        }
+-
+         r = chmod_and_chown(console, 0600, 0, 0);
+         if (r < 0) {
+                 log_error("Failed to correct access mode for TTY: %s", strerror(-r));
+@@ -1004,15 +1018,11 @@ static int setup_dev_console(const char *dest, const char *console) {
+ 
+         /* We need to bind mount the right tty to /dev/console since
+          * ptys can only exist on pts file systems. To have something
+-         * to bind mount things on we create a device node first, and
+-         * use /dev/null for that since we the cgroups device policy
+-         * allows us to create that freely, while we cannot create
+-         * /dev/console. (Note that the major minor doesn't actually
+-         * matter here, since we mount it over anyway). */
++         * to bind mount things on we create an empty regular file. */
+ 
+         to = strappenda(dest, "/dev/console");
+-        if (mknod(to, (st.st_mode & ~07777) | 0600, st.st_rdev) < 0) {
+-                log_error("mknod() for /dev/console failed: %m");
++        if (touch(to) < 0) {
++                log_error("touch() for /dev/console failed: %m");
+                 return -errno;
          }
  
 -- 
