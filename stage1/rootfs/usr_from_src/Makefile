@@ -40,7 +40,7 @@ systemd.src: Makefile patches/*
 	mv systemd-215 systemd
 
 	cd systemd && for p in ../patches/*; do patch -p1 <"$$p"; done
-	cd systemd && ./autogen.sh
+	#cd systemd && ./autogen.sh
 	touch systemd.src
 
 .PHONY: clean distclean
