@@ -16,6 +16,6 @@ install:
  - go get github.com/appc/spec/...
 
 script:
- - ./test
+ - RKT_STAGE1_USR_FROM=src ./test
  - ./test-functional
 

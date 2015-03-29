@@ -15,5 +15,5 @@ build:
           #sudo go get code.google.com/p/go.tools/cmd/vet
           #sudo go get github.com/appc/spec/...
 
-          ./test
+          RKT_STAGE1_USR_FROM=src ./test
           ./test-functional
