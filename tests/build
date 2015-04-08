@@ -10,4 +10,6 @@ fi
 mkdir -p image/rootfs
 cp inspect/inspect image/rootfs/
 ../bin/actool build image rkt-inspect.aci
+../bin/actool patch-manifest --exec="/inspect --print-msg=Hello --exit-code=0" rkt-inspect.aci rkt-inspect-success.aci
+../bin/actool patch-manifest --exec="/inspect --print-msg=Hello --exit-code=20" rkt-inspect.aci rkt-inspect-failure.aci
 
