@@ -18,7 +18,7 @@
     ],
     "app": {
         "exec": [
-            "/inspect", "--print-msg=Hello"
+            "/inspect", "--print-msg=Hello", "--exit-code=20"
         ],
         "user": "0",
         "group": "0",

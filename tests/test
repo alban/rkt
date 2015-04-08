@@ -1,0 +1,4 @@
+#!/bin/bash -xe
+
+sudo expect -f test-success.expect
+sudo expect -f test-failure.expect
