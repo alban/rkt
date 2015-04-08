@@ -9,5 +9,5 @@ fi
 
 mkdir -p image/rootfs
 cp inspect/inspect image/rootfs/
-actool build image rkt-inspect.aci
+../bin/actool build image rkt-inspect.aci
 

@@ -41,5 +41,5 @@ echo
 #tail -100 /tmp/logs
 
 (cd tests && ./build)
-sudo rkt --debug --insecure-skip-verify  run ./tests/rkt-inspect.aci
+sudo bin/rkt --debug --insecure-skip-verify  run ./tests/rkt-inspect.aci
 
