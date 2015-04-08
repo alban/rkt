@@ -54,4 +54,9 @@ if [ -n "${vetRes}" ]; then
 	exit 255
 fi
 
+if [ "$CI" == true ] ; then
+	echo "Checking functional tests..."
+	(cd tests && ./test)
+fi
+
 echo "Success"

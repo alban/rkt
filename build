@@ -1,5 +1,27 @@
 #!/bin/bash -eu
 
+if [ "${CI-}" == true ] ; then
+	if [ "${SEMAPHORE-}" == true ] ; then
+		sudo apt-get update -qq
+		sudo apt-get install -y cpio realpath squashfs-tools
+		sudo apt-get install -y strace gdb libcap-ng-utils
+		sudo apt-get install -y expect
+		sudo apt-get install -y coreutils # systemd needs a recent /bin/ln
+		sudo apt-get install -y gperf libcap-dev # systemd deps
+		sudo apt-get install -y git # cloning a tag of systemd
+	fi
+	if [ "${CIRCLECI-}" == true ] ; then
+		sudo apt-get update -qq
+		sudo apt-get install -y cpio realpath squashfs-tools
+		sudo apt-get install -y strace gdb libcap-ng-utils
+		sudo apt-get install -y expect
+		sudo apt-get install -y coreutils # systemd needs a recent /bin/ln
+		sudo apt-get install -y gperf libcap-dev linux-headers-3.13.0-34-generic linux-libc-dev # systemd deps
+		sudo apt-get install -y git # cloning a tag of systemd
+		export RKT_STAGE1_USR_FROM=src
+	fi
+fi
+
 ORG_PATH="github.com/coreos"
 REPO_PATH="${ORG_PATH}/rkt"
 
@@ -66,3 +88,6 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 	echo "Building rootfs (stage1) using ${JOBS} CPUs..."
 	make -C stage1/rootfs -j ${JOBS}
 fi
+
+echo "Building functional tests..."
+(cd tests && ./build)
