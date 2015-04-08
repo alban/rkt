@@ -11,12 +11,14 @@ import (
 var (
 	globalFlagset = flag.NewFlagSet("inspect", flag.ExitOnError)
 	globalFlags   = struct {
+		PrintMsg string
 		ExitCode int
 		CheckCwd string
 	}{}
 )
 
 func init() {
+	globalFlagset.StringVar(&globalFlags.PrintMsg, "print-msg", "", "Print this message")
 	globalFlagset.IntVar(&globalFlags.ExitCode, "exit-code", 0, "Return this exit code")
 	globalFlagset.StringVar(&globalFlags.CheckCwd, "check-cwd", "", "Check the current working directory")
 }
@@ -27,6 +29,10 @@ func main() {
 	if len(args) > 0 {
 		fmt.Fprintln(os.Stderr, "Wrong parameters\n")
 		os.Exit(1)
+	}
+
+	if globalFlags.PrintMsg != "" {
+		fmt.Fprintf(os.Stdout, "%s\n", globalFlags.PrintMsg)
 	}
 
 	if globalFlags.CheckCwd != "" {

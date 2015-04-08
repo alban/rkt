@@ -1,0 +1,13 @@
+#!/bin/bash -e
+
+if [ ! -e ./image/manifest ] ; then
+	echo "Wrong directory"
+	exit 1
+fi
+
+(cd inspect && go build)
+
+mkdir -p image/rootfs
+cp inspect/inspect image/rootfs/
+actool build image rkt-inspect.aci
+
