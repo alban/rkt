@@ -1,4 +1,4 @@
 #!/bin/bash
 
-sudo GOPATH=$GOPATH go test -v
+sudo GOPATH=${PWD}/../gopath go test -v $*
 
