@@ -31,6 +31,8 @@ import (
 	"syscall"
 
 	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/schema/types"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/godbus/dbus"
+	"github.com/coreos/rkt/Godeps/_workspace/src/github.com/godbus/dbus/introspect"
 
 	"github.com/coreos/rkt/common"
 	"github.com/coreos/rkt/networking"
@@ -97,6 +99,40 @@ func init() {
 	runtime.LockOSThread()
 }
 
+// machinedRegister checks if nspawn should register the pod to machined
+func machinedRegister() bool {
+	// machined has a D-Bus interface following versioning guidelines, see:
+	// http://www.freedesktop.org/wiki/Software/systemd/machined/
+	// Therefore we can just check if the D-Bus method we need exists and we
+	// don't need to check the signature.
+	var found int
+
+	conn, err := dbus.SystemBus()
+	if err != nil {
+		return false
+	}
+	node, err := introspect.Call(conn.Object("org.freedesktop.machine1", "/org/freedesktop/machine1"))
+	if err != nil {
+		return false
+	}
+	for _, iface := range node.Interfaces {
+		if iface.Name != "org.freedesktop.machine1.Manager" {
+			continue
+		}
+		for _, method := range iface.Methods {
+			if method.Name == "CreateMachineWithNetwork" || method.Name == "RegisterMachineWithNetwork" {
+				found++
+			}
+		}
+		break
+	}
+	if found == 2 {
+		return true
+	}
+
+	return false
+}
+
 // getArgsEnv returns the nspawn args and env according to the usr used
 func getArgsEnv(p *Pod, debug bool) ([]string, []string, error) {
 	args := []string{}
@@ -133,6 +169,11 @@ func getArgsEnv(p *Pod, debug bool) ([]string, []string, error) {
 		}
 		args = append(args, fmt.Sprintf("--pid-file=%v", filepath.Join(out, "pid")))
 		args = append(args, fmt.Sprintf("--keep-fd=%v", lfd))
+		if machinedRegister() {
+			args = append(args, fmt.Sprintf("--register=true"))
+		} else {
+			args = append(args, fmt.Sprintf("--register=false"))
+		}
 	default:
 		return nil, nil, fmt.Errorf("unrecognized stage1 flavor: %q", flavor)
 	}
