@@ -1,0 +1,27 @@
+From 323fc0b291df1d18a13b2878cadb5e790bd36b32 Mon Sep 17 00:00:00 2001
+From: Alban Crequy <alban@endocode.com>
+Date: Tue, 21 Apr 2015 13:16:30 +0200
+Subject: [PATCH 4/4] Revert "core/mount: add dependencies to dynamically
+ mounted mounts too"
+
+This reverts commit 06e97888883e2cc12eb6514e80c7f0014295f59b.
+---
+ src/core/mount.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/core/mount.c b/src/core/mount.c
+index f3977e6..332b91a 100644
+--- a/src/core/mount.c
++++ b/src/core/mount.c
+@@ -300,7 +300,7 @@ static int mount_add_device_links(Mount *m) {
+ 
+         assert(m);
+ 
+-        p = get_mount_parameters(m);
++        p = get_mount_parameters_fragment(m);
+         if (!p)
+                 return 0;
+ 
+-- 
+2.1.4
+
