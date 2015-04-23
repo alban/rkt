@@ -5,4 +5,5 @@ package dummy
 import (
 	_ "github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/aci"
 	_ "github.com/coreos/rkt/Godeps/_workspace/src/github.com/appc/spec/actool"
+	_ "github.com/coreos/rkt/Godeps/_workspace/src/github.com/godbus/dbus"
 )
