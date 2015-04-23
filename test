@@ -61,7 +61,13 @@ if [ "$CI" == true ] ; then
 		echo "Checking functional tests..."
 		# Run destructive tests too
 		export RKT_ENABLE_DESTRUCTIVE_TESTS=1
-		(cd tests && ./test)
+
+		for RKT_STAGE1_SYSTEMD_VER in v215 v219 master ; do
+			mkdir -p build-rkt-systemd-$RKT_STAGE1_SYSTEMD_VER
+			export RKT_STAGE1_USR_FROM=src
+			export RKT_STAGE1_SYSTEMD_VER
+			(cd build-rkt-systemd-$RKT_STAGE1_SYSTEMD_VER && git clone ../ rkt && cd rkt && ./build && cd tests && ./test)
+		done
 	else
 		echo "Functional tests disabled."
 	fi
