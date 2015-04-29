@@ -308,6 +308,15 @@ func Run(cfg RunConfig, dir string) {
 		log.Fatalf("failed changing to dir: %v", err)
 	}
 
+	// we write /etc/machine-id here because systemd-nspawn needs it to link
+	// the container's journal to the host
+	mPath := filepath.Join(common.Stage1RootfsPath(dir), "etc", "machine-id")
+	mId := strings.Replace(cfg.UUID.String(), "-", "", -1)
+
+	if err := ioutil.WriteFile(mPath, []byte(mId), 0644); err != nil {
+		log.Fatalf("error writing /etc/machine-id: %v\n", err)
+	}
+
 	ep, err := getStage1Entrypoint(dir, runEntrypoint)
 	if err != nil {
 		log.Fatalf("error determining init entrypoint: %v", err)
