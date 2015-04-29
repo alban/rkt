@@ -194,6 +194,8 @@ func getArgsEnv(p *Pod, debug bool) ([]string, []string, error) {
 	}
 	args = append(args, nsargs...)
 
+	args = append(args, "--link-journal=try-host")
+
 	// Arguments to systemd
 	args = append(args, "--")
 	args = append(args, "--default-standard-output=tty") // redirect all service logs straight to tty
