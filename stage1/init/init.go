@@ -177,6 +177,9 @@ func getArgsEnv(p *Pod, debug bool) ([]string, []string, error) {
 		args = append(args, fmt.Sprintf("--keep-fd=%v", lfd))
 		if machinedRegister() {
 			args = append(args, fmt.Sprintf("--register=true"))
+			// this parameter only works if stage1 has systemd v219 and the
+			// host runs systemd.
+			args = append(args, "--link-journal=try-host")
 		} else {
 			args = append(args, fmt.Sprintf("--register=false"))
 		}
@@ -193,8 +196,6 @@ func getArgsEnv(p *Pod, debug bool) ([]string, []string, error) {
 		return nil, nil, fmt.Errorf("Failed to generate nspawn args: %v", err)
 	}
 	args = append(args, nsargs...)
-
-	args = append(args, "--link-journal=try-host")
 
 	// Arguments to systemd
 	args = append(args, "--")
