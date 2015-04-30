@@ -1,7 +1,7 @@
 From ac144a4dd0406c929a7e85d357a269dedac61780 Mon Sep 17 00:00:00 2001
 From: Lennart Poettering <lennart@poettering.net>
 Date: Tue, 31 Mar 2015 15:34:01 +0200
-Subject: [PATCH 3/4] nspawn: drop sd_booted() check
+Subject: [PATCH 3/5] nspawn: drop sd_booted() check
 
 We have no such check in any of the other tools, hence don't have one in
 nspawn either.
@@ -33,5 +33,5 @@ index 5ea07c4..5a30bdd 100644
          n_fd_passed = sd_listen_fds(false);
          if (n_fd_passed > 0) {
 -- 
-2.1.4
+2.3.6
 

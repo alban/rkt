@@ -1,0 +1,31 @@
+From ad0765bf0b6d92e2f68a525c1ddac1dd00953f2d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Iago=20L=C3=B3pez=20Galeiras?= <iago@endocode.com>
+Date: Thu, 30 Apr 2015 14:23:25 +0200
+Subject: [PATCH 5/5] WIP patch for link_journal
+
+---
+ src/nspawn/nspawn.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/nspawn/nspawn.c b/src/nspawn/nspawn.c
+index 5a30bdd..f85319b 100644
+--- a/src/nspawn/nspawn.c
++++ b/src/nspawn/nspawn.c
+@@ -1762,8 +1762,13 @@ static int setup_journal(const char *directory) {
+                 return log_error_errno(r, "Failed to parse machine ID from %s: %m", p);
+ 
+         r = sd_id128_get_machine(&this_id);
+-        if (r < 0)
++        if (r < 0) {
++                if (r == -ENOENT && (arg_link_journal_try || arg_link_journal == LINK_AUTO)) {
++                        log_debug_errno(errno, "Failed to read /etc/machine-id, skipping journal setup: %m");
++                        return 0;
++                }
+                 return log_error_errno(r, "Failed to retrieve machine ID: %m");
++        }
+ 
+         if (sd_id128_equal(machine_id, this_id)) {
+                 log_full(arg_link_journal == LINK_AUTO ? LOG_WARNING : LOG_ERR,
+-- 
+2.3.6
+
