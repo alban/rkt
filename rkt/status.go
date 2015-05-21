@@ -86,10 +86,8 @@ func printStatus(p *pod) error {
 	}
 
 	if !p.isEmbryo && !p.isPreparing && !p.isPrepared && !p.isAbortedPrepare && !p.isGarbage && !p.isGone {
-		pid, err := p.getPID()
-		if err != nil {
-			return err
-		}
+		// TODO(alban): FIXME
+		pid := -1
 
 		stats, err := p.getExitStatuses()
 		if err != nil {

@@ -47,6 +47,112 @@ static int openpidfd(int pid, char *which) {
 	return fd;
 }
 
+static int get_ppid() {
+	FILE	*fp;
+	int	ppid;
+	char	proc_pid[PATH_MAX];
+
+	/* We start in the pod root, where "ppid" should be. */
+
+	pexit_if((fp = fopen("ppid", "r")) == NULL && errno != ENOENT,
+		"Unable to open ppid file");
+
+	/* The ppid file might not be written yet. The error is not fatal: we
+	 * can try a bit later. */
+	if (fp == NULL)
+		return 0;
+
+	pexit_if(fscanf(fp, "%i", &ppid) != 1,
+		"Unable to read ppid");
+	fclose(fp);
+
+	/* Check if ppid terminated. It's ok if it terminates just after the
+	 * check: it will be detected after. But in the common case, we get a
+	 * better error message. */
+	(void) snprintf(proc_pid, PATH_MAX, "/proc/%i", ppid);
+	pexit_if(access(proc_pid, F_OK) != 0,
+		"The pod has terminated (ppid=%i)", ppid);
+
+	return ppid;
+}
+
+static int pod_is_running() {
+	/* TODO(alban): check if the lock on the directory is taken... */
+	return 1;
+}
+
+static int get_pid(void) {
+	FILE	*fp;
+	int	ppid = 0, pid = 0;
+	int 	ret;
+	char	proc_children[PATH_MAX];
+	char	proc_exe1[PATH_MAX];
+	char	proc_exe2[PATH_MAX];
+	char	link1[PATH_MAX];
+	char	link2[PATH_MAX];
+
+	do {
+		pexit_if((ppid = get_ppid()) == -1,
+			"Unable to get ppid");
+
+		if (ppid > 0)
+			break;
+
+		if (ppid == 0 && pod_is_running()) {
+			usleep(100 * 1000);
+			continue;
+		}
+	} while (pod_is_running());
+
+	pexit_if(access("/proc/1/task/1/children", F_OK) != 0,
+		"Unable to read /proc/1/task/1/children. Does your kernel have CONFIG_CHECKPOINT_RESTORE?");
+
+	(void) snprintf(proc_children, PATH_MAX, "/proc/%i/task/%i/children", ppid, ppid);
+
+	do {
+		pexit_if((fp = fopen(proc_children, "r")) == NULL,
+			"Unable to open '%s'", proc_children);
+
+		errno = 0;
+		ret = fscanf(fp, "%i ", &pid);
+		pexit_if(errno != 0,
+			"Unable to find children of process %i", ppid);
+		fclose(fp);
+
+		if (ret == 1)
+			break;
+
+		if (ret == 0) {
+			usleep(100 * 1000);
+			continue;
+		}
+	} while (pod_is_running());
+
+	if (pid <= 0)
+		return pid;
+
+	/* Ok, we have the correct ppid and pid.
+	 *
+	 * But /sbin/init in the pod might not have been exec()ed yet and so it
+	 * might not have done the chroot() yet. Wait until the pod is ready
+	 * to be entered, otherwise we might chroot() to the wrong directory!
+	 */
+	(void) snprintf(proc_exe1, PATH_MAX, "/proc/%i/exe", ppid);
+	(void) snprintf(proc_exe2, PATH_MAX, "/proc/%i/exe", pid);
+	do {
+		pexit_if(readlink(proc_exe1, link1, PATH_MAX) == -1,
+			"Cannot read link '%s'", proc_exe1);
+		pexit_if(readlink(proc_exe2, link2, PATH_MAX) == -1,
+			"Cannot read link '%s'", proc_exe1);
+		if (strcmp(link1, link2) == 0) {
+			usleep(100 * 1000);
+			continue;
+		}
+	} while (0);
+
+	return pid;
+}
+
 int main(int argc, char *argv[])
 {
 	int	fd;
@@ -55,10 +161,14 @@ int main(int argc, char *argv[])
 	int	status;
 	int	root_fd;
 
-	exit_if(argc < 4,
-		"Usage: %s pid imageid cmd [args...]", argv[0])
+	/* The parameters list is part of stage1 ABI and is specified in
+	 * Documentation/devel/stage1-implementors-guide.md */
+	exit_if(argc < 3,
+		"Usage: %s imageid cmd [args...]", argv[0])
 
-	pid = atoi(argv[1]);
+	pexit_if((pid = get_pid()) == -1,
+		"Unable to get the pod process leader");
+
 	root_fd = openpidfd(pid, "root");
 
 #define ns(_typ, _nam)							\
@@ -87,7 +197,7 @@ int main(int argc, char *argv[])
 		"Unable to fork");
 
 /* some stuff make the argv->args copy less cryptic */
-#define ENTER_ARGV_FWD_OFFSET		3
+#define ENTER_ARGV_FWD_OFFSET		2
 #define DIAGEXEC_ARGV_FWD_OFFSET	6
 #define args_fwd_idx(_idx) \
 	((_idx - ENTER_ARGV_FWD_OFFSET) + DIAGEXEC_ARGV_FWD_OFFSET)
@@ -101,11 +211,11 @@ int main(int argc, char *argv[])
 		/* Child goes on to execute /diagexec */
 
 		exit_if(snprintf(root, sizeof(root),
-				 "/opt/stage2/%s/rootfs", argv[2]) == sizeof(root),
+				 "/opt/stage2/%s/rootfs", argv[1]) == sizeof(root),
 			"Root path overflow");
 
 		exit_if(snprintf(env, sizeof(env),
-				 "/rkt/env/%s", argv[2]) == sizeof(env),
+				 "/rkt/env/%s", argv[1]) == sizeof(env),
 			"Env path overflow");
 
 		args[0] = "/diagexec";

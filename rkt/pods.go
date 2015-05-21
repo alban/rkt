@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"syscall"
 	"time"
 
@@ -730,56 +729,6 @@ func (p *pod) getState() string {
 	}
 
 	return state
-}
-
-// getPID returns the pid of the pod.
-func (p *pod) getPID() (pid int, err error) {
-	// check the "pid" (process ID) file if it exists, and on "ppid"
-	// (parent process ID). Recent stage1 uses "ppid" but we still
-	// support older rkt versions or alternative stage1 implementations.
-
-	for {
-		var ppid int
-
-		pid, err = p.readIntFromFile("pid")
-		if err == nil {
-			return
-		}
-
-		ppid, err = p.readIntFromFile("ppid")
-		if err == nil {
-			_, err = os.Stat("/proc/1/task/1/children")
-			if os.IsNotExist(err) {
-				return -1, fmt.Errorf("Unable to read /proc/1/task/1/children. Does your kernel have CONFIG_CHECKPOINT_RESTORE?")
-			}
-
-			var b []byte
-			b, err = ioutil.ReadFile(fmt.Sprintf("/proc/%d/task/%d/children", ppid, ppid))
-			if err == nil {
-				children := strings.SplitN(string(b), " ", 2)
-				if len(children) == 2 && children[1] != "" {
-					return -1, fmt.Errorf("Too many children of pid %d", ppid)
-				}
-				_, err = fmt.Sscanf(children[0], "%d ", &pid)
-				if err == nil {
-					return pid, nil
-				}
-			}
-		}
-
-		// There's a window between a pod transitioning to run and the pid file being created by stage1.
-		// The window shouldn't be large so we just delay and retry here.  If stage1 fails to reach the
-		// point of pid file creation, it will exit and p.isRunning() becomes false since we refreshState below.
-		time.Sleep(time.Millisecond * 100)
-
-		if err := p.refreshState(); err != nil {
-			return -1, err
-		}
-
-		if !os.IsNotExist(err) || !p.isRunning() {
-			return -1, err
-		}
-	}
 }
 
 // getStage1Hash returns the hash of the stage1 image used in this pod
