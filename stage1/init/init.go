@@ -123,15 +123,17 @@ func mirrorLocalZoneInfo(root string) {
 }
 
 var (
-	debug       bool
-	privNet     common.PrivateNetList
-	interactive bool
+	debug        bool
+	privNet      common.PrivateNetList
+	interactive  bool
+	PrivateUsers string
 )
 
 func init() {
 	flag.BoolVar(&debug, "debug", false, "Run in debug mode")
 	flag.Var(&privNet, "private-net", "Setup private network")
 	flag.BoolVar(&interactive, "interactive", false, "The pod is interactive")
+	flag.StringVar(&PrivateUsers, "private-users", "", "Run within user namespace. Can be set to [=UIDBASE[:NUIDS]]")
 
 	// this ensures that main runs only on main thread (thread group leader).
 	// since namespace ops (unshare, setns) are done for a single thread, we
@@ -321,6 +323,10 @@ func getArgsEnv(p *Pod, flavor string, systemdStage1Version string, debug bool) 
 
 	if !debug {
 		args = append(args, "--quiet") // silence most nspawn output (log_warning is currently not covered by this)
+	}
+
+	if len(PrivateUsers) > 0 {
+		args = append(args, "--private-users="+PrivateUsers)
 	}
 
 	keepUnit, err := isRunningFromUnitFile()

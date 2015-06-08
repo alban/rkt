@@ -43,6 +43,7 @@ func init() {
 
 	cmdRunPrepared.Flags().Var(&flagPrivateNet, "private-net", "give pod a private network")
 	cmdRunPrepared.Flags().Lookup("private-net").NoOptDefVal = "true"
+	cmdRunPrepared.Flags().StringVar(&flagPrivateUsers, "private-users", "", "Run within user namespace. Can be set to [=UIDBASE[:NUIDS]]")
 	cmdRunPrepared.Flags().BoolVar(&flagInteractive, "interactive", false, "the pod is interactive")
 }
 
@@ -127,10 +128,11 @@ func runRunPrepared(cmd *cobra.Command, args []string) (exit int) {
 			UUID:        p.uuid,
 			Debug:       globalFlags.Debug,
 		},
-		PrivateNet:  flagPrivateNet,
-		LockFd:      lfd,
-		Interactive: flagInteractive,
-		Images:      imgs,
+		PrivateNet:   flagPrivateNet,
+		PrivateUsers: flagPrivateUsers,
+		LockFd:       lfd,
+		Interactive:  flagInteractive,
+		Images:       imgs,
 	}
 	stage0.Run(rcfg, p.path()) // execs, never returns
 	return 1

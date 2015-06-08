@@ -65,6 +65,7 @@ type PrepareConfig struct {
 type RunConfig struct {
 	CommonConfig
 	PrivateNet  common.PrivateNetList // pod should have its own network stack
+	PrivateUsers string		  // User namespaces
 	LockFd      int                   // lock file descriptor
 	Interactive bool                  // whether the pod is interactive or not
 	Images      []types.Hash          // application images (prepare gets them via Apps)
@@ -336,6 +337,9 @@ func Run(cfg RunConfig, dir string) {
 	}
 	if cfg.Interactive {
 		args = append(args, "--interactive")
+	}
+	if len(cfg.PrivateUsers) > 0 {
+		args = append(args, "--private-users="+cfg.PrivateUsers)
 	}
 	args = append(args, cfg.UUID.String())
 

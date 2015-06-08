@@ -47,16 +47,17 @@ which will instead be appended to the preceding image app's exec arguments.
 End the image arguments with a lone "---" to resume argument parsing.`,
 		Run: runWrapper(runRun),
 	}
-	flagStage1Image string
-	flagVolumes     volumeList
-	flagPorts       portList
-	flagPrivateNet  common.PrivateNetList
-	flagInheritEnv  bool
-	flagExplicitEnv envMap
-	flagInteractive bool
-	flagNoOverlay   bool
-	flagLocal       bool
-	flagPodManifest string
+	flagStage1Image  string
+	flagVolumes      volumeList
+	flagPorts        portList
+	flagPrivateNet   common.PrivateNetList
+	flagPrivateUsers string
+	flagInheritEnv   bool
+	flagExplicitEnv  envMap
+	flagInteractive  bool
+	flagNoOverlay    bool
+	flagLocal        bool
+	flagPodManifest  string
 )
 
 func init() {
@@ -75,6 +76,7 @@ func init() {
 	cmdRun.Flags().Var(&flagPorts, "port", "ports to expose on the host (requires --private-net)")
 	cmdRun.Flags().Var(&flagPrivateNet, "private-net", "give pod a private network that defaults to the default network plus all user-configured networks. Can be limited to a comma-separated list of network names")
 	cmdRun.Flags().Lookup("private-net").NoOptDefVal = "true"
+	cmdRun.Flags().StringVar(&flagPrivateUsers, "private-users", "", "Run within user namespace. Can be set to [=UIDBASE[:NUIDS]]")
 	cmdRun.Flags().BoolVar(&flagInheritEnv, "inherit-env", false, "inherit all environment variables not set by apps")
 	cmdRun.Flags().BoolVar(&flagNoOverlay, "no-overlay", false, "disable overlay filesystem")
 	cmdRun.Flags().Var(&flagExplicitEnv, "set-env", "an environment variable to set for apps in the form name=value")
@@ -221,6 +223,7 @@ func runRun(cmd *cobra.Command, args []string) (exit int) {
 	rcfg := stage0.RunConfig{
 		CommonConfig: cfg,
 		PrivateNet:   flagPrivateNet,
+		PrivateUsers: flagPrivateUsers,
 		LockFd:       lfd,
 		Interactive:  flagInteractive,
 	}
