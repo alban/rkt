@@ -14,6 +14,7 @@ install: Makefile host_deps.txt
 	cat host_deps.txt | while read dep; do echo install -D \"$${dep}\" \"\$${ROOT}/$${dep}\"; done >> install.tmp
 	echo ln -sf src \"\$${ROOT}/flavor\" >> install.tmp
 	echo "echo $(RKT_STAGE1_SYSTEMD_VER) > \"\$${ROOT}/systemd-version\"" >> install.tmp
+	echo "echo `cd systemd && git describe` > \"\$${ROOT}/systemd-git-version\"" >> install.tmp
 	mv install.tmp install
 
 # discover host library dependencies for all the ELF executables in systemd_build/installed, note the LD_LIBRARY_PATH= to find systemd-produced libraries.
@@ -104,6 +105,7 @@ systemd.src: Makefile patches/*
 			fi ; \
 		done ; \
 	fi
+	echo -n "Systemd git version: " && cd systemd && git describe
 	cd systemd && ./autogen.sh
 	touch systemd.src
 
