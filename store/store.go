@@ -428,7 +428,7 @@ func (s Store) RenderTreeStore(key string, rebuild bool) error {
 	if err := s.treestore.Remove(key); err != nil {
 		return err
 	}
-	if err := s.treestore.Write(key, &s); err != nil {
+	if err := s.treestore.Write(key, &s, 0, 0); err != nil {
 		return err
 	}
 	return nil

@@ -32,6 +32,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -52,20 +53,20 @@ import (
 type PrepareConfig struct {
 	CommonConfig
 	// TODO(jonboulle): These images are partially-populated hashes, this should be clarified.
-	Apps        *apps.Apps          // apps to prepare
-	InheritEnv  bool                // inherit parent environment into apps
-	ExplicitEnv []string            // always set these environment variables for all the apps
-	Volumes     []types.Volume      // list of volumes that rkt can provide to applications
-	Ports       []types.ExposedPort // list of ports that rkt will expose on the host
-	UseOverlay  bool                // prepare pod with overlay fs
-	PodManifest string              // use the pod manifest specified by the user, this will ignore flags such as '--volume', '--port', etc.
+	Apps         *apps.Apps          // apps to prepare
+	InheritEnv   bool                // inherit parent environment into apps
+	ExplicitEnv  []string            // always set these environment variables for all the apps
+	Volumes      []types.Volume      // list of volumes that rkt can provide to applications
+	Ports        []types.ExposedPort // list of ports that rkt will expose on the host
+	UseOverlay   bool                // prepare pod with overlay fs
+	PodManifest  string              // use the pod manifest specified by the user, this will ignore flags such as '--volume', '--port', etc.
+	PrivateUsers string              // User namespaces
 }
 
 // configuration parameters needed by Run
 type RunConfig struct {
 	CommonConfig
 	PrivateNet  common.PrivateNetList // pod should have its own network stack
-	PrivateUsers string		  // User namespaces
 	LockFd      int                   // lock file descriptor
 	Interactive bool                  // whether the pod is interactive or not
 	Images      []types.Hash          // application images (prepare gets them via Apps)
@@ -256,6 +257,13 @@ func Prepare(cfg PrepareConfig, dir string, uuid *types.UUID) error {
 		defer f.Close()
 	}
 
+	if len(cfg.PrivateUsers) > 0 {
+		// mark the pod as prepared for user namespaces
+		if err := ioutil.WriteFile(filepath.Join(dir, common.PrivateUsersPreparedFilename), []byte(cfg.PrivateUsers), 0700); err != nil {
+			return fmt.Errorf("error writing userns marker file: %v", err)
+		}
+	}
+
 	return nil
 }
 
@@ -275,10 +283,27 @@ func preparedWithOverlay(dir string) (bool, error) {
 	return true, nil
 }
 
+func preparedWithPrivateUsers(dir string) (string, error) {
+	bytes, err := ioutil.ReadFile(filepath.Join(dir, common.PrivateUsersPreparedFilename))
+	if os.IsNotExist(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytes), nil
+}
+
 // Run mounts the right overlay filesystems and actually runs the prepared
 // pod by exec()ing the stage1 init inside the pod filesystem.
 func Run(cfg RunConfig, dir string) {
 	useOverlay, err := preparedWithOverlay(dir)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+
+	privateUsers, err := preparedWithPrivateUsers(dir)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
@@ -338,8 +363,8 @@ func Run(cfg RunConfig, dir string) {
 	if cfg.Interactive {
 		args = append(args, "--interactive")
 	}
-	if len(cfg.PrivateUsers) > 0 {
-		args = append(args, "--private-users="+cfg.PrivateUsers)
+	if len(privateUsers) > 0 {
+		args = append(args, "--private-users="+privateUsers)
 	}
 	args = append(args, cfg.UUID.String())
 
@@ -357,6 +382,23 @@ func Run(cfg RunConfig, dir string) {
 	}
 }
 
+func parsePrivateUsers(privateUsers string) (uidShift uint64, uidCount uint64, err error) {
+	if len(privateUsers) == 0 {
+		return 0, 0, nil
+	}
+
+	privateUsersArr := strings.Split(privateUsers, ":")
+	uidShift, err = strconv.ParseUint(privateUsersArr[0], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	uidCount, err = strconv.ParseUint(privateUsersArr[1], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	return
+}
+
 // prepareAppImage renders and verifies the tree cache of the app image that
 // corresponds to the given hash.
 // When useOverlay is false, it attempts to render and expand the app image
@@ -365,6 +407,9 @@ func prepareAppImage(cfg PrepareConfig, img types.Hash, cdir string, useOverlay 
 	log.Println("Loading image", img.String())
 
 	if useOverlay {
+		if len(cfg.PrivateUsers) > 0 {
+			return nil, fmt.Errorf("cannot use both overlay and user namespace: not implemented yet")
+		}
 		if err := cfg.Store.RenderTreeStore(img.String(), false); err != nil {
 			return nil, fmt.Errorf("error rendering tree image: %v", err)
 		}
@@ -380,8 +425,11 @@ func prepareAppImage(cfg PrepareConfig, img types.Hash, cdir string, useOverlay 
 		if err != nil {
 			return nil, fmt.Errorf("error creating image directory: %v", err)
 		}
-
-		if err := aci.RenderACIWithImageID(img, ad, cfg.Store); err != nil {
+		uidShift, uidCount, err := parsePrivateUsers(cfg.PrivateUsers)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing --private-users: %v", err)
+		}
+		if err := aci.RenderACIWithImageID(img, ad, cfg.Store, uidShift, uidCount); err != nil {
 			return nil, fmt.Errorf("error rendering ACI: %v", err)
 		}
 	}
@@ -444,7 +492,12 @@ func prepareStage1Image(cfg PrepareConfig, img types.Hash, cdir string, useOverl
 
 		destRootfs := filepath.Join(s1, "rootfs")
 		cachedTreePath := cfg.Store.GetTreeStoreRootFS(img.String())
-		if err := fileutil.CopyTree(cachedTreePath, destRootfs); err != nil {
+
+		uidShift, uidCount, err := parsePrivateUsers(cfg.PrivateUsers)
+		if err != nil {
+			return fmt.Errorf("error parsing --private-users: %v", err)
+		}
+		if err := fileutil.CopyTree(cachedTreePath, destRootfs, uidShift, uidCount); err != nil {
 			return fmt.Errorf("error rendering ACI: %v", err)
 		}
 	}

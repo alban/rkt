@@ -128,11 +128,10 @@ func runRunPrepared(cmd *cobra.Command, args []string) (exit int) {
 			UUID:        p.uuid,
 			Debug:       globalFlags.Debug,
 		},
-		PrivateNet:   flagPrivateNet,
-		PrivateUsers: flagPrivateUsers,
-		LockFd:       lfd,
-		Interactive:  flagInteractive,
-		Images:       imgs,
+		PrivateNet:  flagPrivateNet,
+		LockFd:      lfd,
+		Interactive: flagInteractive,
+		Images:      imgs,
 	}
 	stage0.Run(rcfg, p.path()) // execs, never returns
 	return 1

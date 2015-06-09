@@ -336,7 +336,7 @@ func (p *Pod) writeEnvFile(env types.Environment, id types.Hash) error {
 	for _, e := range env {
 		fmt.Fprintf(&ef, "%s=%s\000", e.Name, e.Value)
 	}
-	return ioutil.WriteFile(EnvFilePath(p.Root, id), ef.Bytes(), 0640)
+	return ioutil.WriteFile(EnvFilePath(p.Root, id), ef.Bytes(), 0644)
 }
 
 // PodToSystemd creates the appropriate systemd service unit files for

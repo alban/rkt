@@ -189,6 +189,7 @@ func runRun(cmd *cobra.Command, args []string) (exit int) {
 	pcfg := stage0.PrepareConfig{
 		CommonConfig: cfg,
 		UseOverlay:   !flagNoOverlay && common.SupportsOverlay(),
+		PrivateUsers: flagPrivateUsers,
 	}
 
 	if len(flagPodManifest) > 0 {
@@ -223,7 +224,6 @@ func runRun(cmd *cobra.Command, args []string) (exit int) {
 	rcfg := stage0.RunConfig{
 		CommonConfig: cfg,
 		PrivateNet:   flagPrivateNet,
-		PrivateUsers: flagPrivateUsers,
 		LockFd:       lfd,
 		Interactive:  flagInteractive,
 	}
