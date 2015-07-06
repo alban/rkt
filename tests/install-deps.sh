@@ -12,6 +12,11 @@ if [ "${CI-}" == true ] ; then
 
 		sudo apt-get update -qq || true
 		sudo apt-get install -y libcapture-tiny-perl # used by tools/
+
+		# We need a more recent version of "go vet" to avoid the
+		# following bug: https://github.com/golang/go/issues/6820
+		wget https://storage.googleapis.com/golang/go1.4.2.linux-amd64.tar.gz -P /tmp
+		sudo tar -C /usr/local -xzf /tmp/go1.4.2.linux-amd64.tar.gz
 	fi
 
 	# https://circleci.com/
