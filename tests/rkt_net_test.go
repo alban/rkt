@@ -440,16 +440,21 @@ func testNetCustomDual(t *testing.T, nt networkTemplateT) {
 		testImage := patchTestACI("rkt-inspect-networking1.aci", testImageArgs...)
 		defer os.Remove(testImage)
 
+		fmt.Printf("debug: starting HTTP server.\n")
 		cmd := fmt.Sprintf("%s --debug --insecure-skip-verify run --net=%v --mds-register=false %s", ctx.Cmd(), nt.Name, testImage)
 		child := ga.SpawnOrFail(cmd)
+		defer fmt.Printf("debug: HTTP server: WaitOrFail terminated.\n")
 		defer ga.WaitOrFail(child)
 
+		fmt.Printf("debug: starting regexp.\n")
 		expectedRegex := `IPv4: (\d+\.\d+\.\d+\.\d+)`
 		result, out, err := expectRegexTimeoutWithOutput(child, expectedRegex, 30*time.Second)
+		fmt.Printf("debug: regexp completed.\n")
 		if err != nil {
 			ga.Fatalf("Error: %v\nOutput: %v", err, out)
 		}
 		container1IPv4 <- result[1]
+		fmt.Printf("debug: ip sent through the channel.\n")
 		expectedRegex = `(rkt-.*): serving on`
 		result, out, err = expectRegexTimeoutWithOutput(child, expectedRegex, 30*time.Second)
 		if err != nil {
@@ -463,11 +468,13 @@ func testNetCustomDual(t *testing.T, nt networkTemplateT) {
 
 		var httpGetAddr string
 		httpGetAddr = fmt.Sprintf("http://%v:%v", <-container1IPv4, httpPort)
+		fmt.Printf("debug: got from the channel.\n")
 
 		testImageArgs := []string{"--exec=/inspect --get-http=" + httpGetAddr}
 		testImage := patchTestACI("rkt-inspect-networking2.aci", testImageArgs...)
 		defer os.Remove(testImage)
 
+		fmt.Printf("debug: starting HTTP client.\n")
 		cmd := fmt.Sprintf("%s --debug --insecure-skip-verify run --net=%v --mds-register=false %s", ctx.Cmd(), nt.Name, testImage)
 		child := ga.SpawnOrFail(cmd)
 		defer ga.WaitOrFail(child)
